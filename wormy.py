@@ -65,11 +65,7 @@ def runGame():
         starty = random.randint(5, CELLHEIGHT - 6)
         wormCoords = [{'x': startx,     'y': starty},
                       {'x': startx - 1, 'y': starty},
-                      {'x': startx - 2, 'y': starty},
-                      {'x': startx - 3, 'y': starty},
-                      {'x': startx - 4, 'y': starty},
-                      {'x': startx - 5, 'y': starty},
-                      {'x': startx - 6, 'y': starty}]
+                      {'x': startx - 2, 'y': starty}]
         direction = RIGHT
         wormList.append([wormCoords, direction, WHITE])
 
