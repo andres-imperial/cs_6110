@@ -21,9 +21,11 @@ WHITE     = (255, 255, 255)
 BLACK     = (  0,   0,   0)
 RED       = (255,   0,   0)
 GREEN     = (  0, 255,   0)
+BLUE     = (  0,   0, 255)
 DARKGREEN = (  0, 155,   0)
 DARKGRAY  = ( 40,  40,  40)
-YELLOW = (255,255,0)
+GRAY  =    ( 192, 192, 192)
+YELLOW =   ( 255, 255,   0)
 BGCOLOR = BLACK
 
 UP = 'up'
@@ -32,6 +34,11 @@ LEFT = 'left'
 RIGHT = 'right'
 
 HEAD = 0 # syntactic sugar: index of the worm's head
+
+class Bullet:
+    def __init__(self, direction, position):
+        self.direction = direction
+        self.position = position
 
 def main():
     global FPSCLOCK, DISPLAYSURF, BASICFONT
@@ -49,16 +56,25 @@ def main():
 
 
 def runGame():
+    bullets = []
     wormList = []
+    rocks = []
     for i in range(0, 2):
         # Set a random start point.
         startx = random.randint(5, CELLWIDTH - 6)
         starty = random.randint(5, CELLHEIGHT - 6)
         wormCoords = [{'x': startx,     'y': starty},
                       {'x': startx - 1, 'y': starty},
-                      {'x': startx - 2, 'y': starty}]
+                      {'x': startx - 2, 'y': starty},
+                      {'x': startx - 3, 'y': starty},
+                      {'x': startx - 4, 'y': starty},
+                      {'x': startx - 5, 'y': starty},
+                      {'x': startx - 6, 'y': starty}]
         direction = RIGHT
-        wormList.append([wormCoords, direction])
+        wormList.append([wormCoords, direction, WHITE])
+
+    wormList[0][2] = GREEN
+    wormList[1][2] = BLUE
 
     # Start the apple in a random place.
     apples = []
@@ -71,51 +87,73 @@ def runGame():
                 terminate()
             elif event.type == KEYDOWN:
                 # check first worm key input
+                wormCoords = wormList[0][0]
                 direction = wormList[0][1]
-                if (event.key == K_LEFT) and direction != RIGHT:
+                if (event.key == K_LEFT or event.key == K_KP4) and direction != RIGHT:
                     direction = LEFT
-                elif (event.key == K_RIGHT) and direction != LEFT:
+                elif (event.key == K_RIGHT or event.key == K_KP6) and direction != LEFT:
                     direction = RIGHT
-                elif (event.key == K_UP) and direction != DOWN:
+                elif (event.key == K_UP or event.key == K_KP8) and direction != DOWN:
                     direction = UP
-                elif (event.key == K_DOWN) and direction != UP:
+                elif (event.key == K_DOWN or event.key == K_KP2) and direction != UP:
                     direction = DOWN
                 wormList[0][1] = direction
                 # check second worm key input
+                wormCoords = wormList[1][0]
                 direction = wormList[1][1]
-                if (event.key == K_a) and direction != RIGHT:
+                if (event.key == K_a or event.key == K_KP4) and direction != RIGHT:
                     direction = LEFT
-                elif (event.key == K_d) and direction != LEFT:
+                elif (event.key == K_d or event.key == K_KP6) and direction != LEFT:
                     direction = RIGHT
-                elif (event.key == K_w) and direction != DOWN:
+                elif (event.key == K_w or event.key == K_KP8) and direction != DOWN:
                     direction = UP
-                elif (event.key == K_s) and direction != UP:
+                elif (event.key == K_s or event.key == K_KP2) and direction != UP:
                     direction = DOWN
                 elif event.key == K_ESCAPE:
                     terminate()
                 wormList[1][1] = direction
 
+                if (event.key == K_SPACE):
+                    # spawn bullet
+                    newBullet = None
+                    if direction == UP:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'], 'y': wormCoords[HEAD]['y'] - 1})
+                    elif direction == DOWN:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'], 'y': wormCoords[HEAD]['y'] + 1})
+                    elif direction == LEFT:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'] - 1, 'y': wormCoords[HEAD]['y']})
+                    elif direction == RIGHT:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'] + 1, 'y': wormCoords[HEAD]['y']})
+                    bullets.append(newBullet)
+
         for i in range(len(wormList)):
             wormCoords = wormList[i][0]
             direction = wormList[i][1]
+            wormColor = wormList[i][2]
 
             # check if the worm has hit itself or the edge
             if wormCoords[HEAD]['x'] == -1 or wormCoords[HEAD]['x'] == CELLWIDTH or wormCoords[HEAD]['y'] == -1 or wormCoords[HEAD]['y'] == CELLHEIGHT:
                 return # game over
-            for wormBody in wormCoords[1:]:
-                if wormBody['x'] == wormCoords[HEAD]['x'] and wormBody['y'] == wormCoords[HEAD]['y']:
-                    return # game over
+            # check if it hit a worm
+            for worm in wormList:
+                testCoords = worm[0]
+                for wormBody in testCoords[1:]:
+                    if wormBody['x'] == wormCoords[HEAD]['x'] and wormBody['y'] == wormCoords[HEAD]['y']:
+                        return # game over
+            # check if worm hit rock
+            if (wormCoords[HEAD] in rocks):
+                return  # game over
 
-            # check if worm has eaten an apple
-            appleEaten = False
-            for apple in apples:
-                if wormCoords[HEAD]['x'] == apple['x'] and wormCoords[HEAD]['y'] == apple['y']:
-                    # don't remove worm's tail segment
-                    apples.remove(apple)
-                    apples.append(getRandomLocation()) # set a new apple somewhere
-                    appleEaten = True
-            if not appleEaten:
-                del wormCoords[-1] # remove worm's tail segment
+
+            # check if bullets have hit a worm
+            for bullet in bullets:
+                if (bullet.position in wormCoords):
+                    index = wormCoords.index(bullet.position)
+                    if (index == HEAD):
+                        return
+                    else:
+                        rocks.extend(wormCoords[index:])
+                        wormCoords = wormCoords[:index]
 
             # move the worm by adding a segment in the direction it is moving
             if direction == UP:
@@ -127,17 +165,33 @@ def runGame():
             elif direction == RIGHT:
                 newHead = {'x': wormCoords[HEAD]['x'] + 1, 'y': wormCoords[HEAD]['y']}
             wormCoords.insert(0, newHead)   #have already removed the last segment
-            wormList[i] = [wormCoords, direction]
+            wormList[i] = [wormCoords, direction, wormColor]
+
+            # check if worm has eaten an apple
+            appleEaten = False
+            for apple in apples:
+                if wormCoords[HEAD]['x'] == apple['x'] and wormCoords[HEAD]['y'] == apple['y']:
+                    # don't remove worm's tail segment
+                    apples.remove(apple)
+                    apples.append(getRandomLocation())  # set a new apple somewhere
+                    appleEaten = True
+            if not appleEaten:
+                del wormCoords[-1]  # remove worm's tail segment
 
         DISPLAYSURF.fill(BGCOLOR)
         drawGrid()
         for worm in wormList:
             wormCoords = worm[0]
-            drawWorm(wormCoords)
+            wormColor = worm[2]
+            drawWorm(wormCoords, wormColor)
+            drawScore(len(wormCoords) - 3, wormColor)
         for apple in apples:
             drawApple(apple)
+        for i in range(len(bullets)):
+            bullets[i] = drawBullet(bullets[i])
+        for rock in rocks:
+            drawRock(rock)
 
-        drawScore(len(wormCoords) - 3)
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -220,21 +274,54 @@ def showGameOverScreen():
             pygame.event.get() # clear event queue
             return
 
-def drawScore(score):
-    scoreSurf = BASICFONT.render('Score: %s' % (score), True, WHITE)
+def drawRock(rockPosition):
+    x = rockPosition['x'] * CELLSIZE
+    y = rockPosition['y'] * CELLSIZE
+    rock = pygame.Rect(x, y, CELLSIZE, CELLSIZE)
+    pygame.draw.rect(DISPLAYSURF, GRAY, rock)
+
+def drawBullet(bullet):
+    direction = bullet.direction
+
+    if direction == UP:
+        bullet.position['y'] -= 1
+        xcenter = bullet.position["x"] * CELLSIZE + math.floor(CELLSIZE/2)
+        ycenter = bullet.position["y"] * CELLSIZE+ math.floor(CELLSIZE/2)
+    elif direction == DOWN:
+        bullet.position['y'] += 1
+        xcenter = bullet.position["x"] * CELLSIZE + math.floor(CELLSIZE/2)
+        ycenter = bullet.position["y"] * CELLSIZE+ math.floor(CELLSIZE/2)
+    elif direction == LEFT:
+        bullet.position['x'] -= 1
+        xcenter = bullet.position["x"] * CELLSIZE + math.floor(CELLSIZE/2)
+        ycenter = bullet.position["y"] * CELLSIZE+ math.floor(CELLSIZE/2)
+    elif direction == RIGHT:
+        bullet.position['x'] += 1
+        xcenter = bullet.position["x"] * CELLSIZE + math.floor(CELLSIZE/2)
+        ycenter = bullet.position["y"] * CELLSIZE+ math.floor(CELLSIZE/2)
+
+    pygame.draw.circle(DISPLAYSURF, WHITE,(int(xcenter),int(ycenter)),int(RADIUS))
+
+    return bullet
+
+def drawScore(score, COLOR):
+    scoreSurf = BASICFONT.render('Score: %s' % (score), True, COLOR)
     scoreRect = scoreSurf.get_rect()
-    scoreRect.topleft = (WINDOWWIDTH - 120, 10)
+    if (COLOR == GREEN):
+        scoreRect.topleft = (WINDOWWIDTH - 120, 10)
+    else:
+        scoreRect.topleft = (10, 10)
     DISPLAYSURF.blit(scoreSurf, scoreRect)
 
 
-def drawWorm(wormCoords):
+def drawWorm(wormCoords, COLOR):
     for coord in wormCoords:
         x = coord['x'] * CELLSIZE
         y = coord['y'] * CELLSIZE
         wormSegmentRect = pygame.Rect(x, y, CELLSIZE, CELLSIZE)
         pygame.draw.rect(DISPLAYSURF, DARKGREEN, wormSegmentRect)
         wormInnerSegmentRect = pygame.Rect(x + 4, y + 4, CELLSIZE - 8, CELLSIZE - 8)
-        pygame.draw.rect(DISPLAYSURF, GREEN, wormInnerSegmentRect)
+        pygame.draw.rect(DISPLAYSURF, COLOR, wormInnerSegmentRect)
 
 
 def drawApple(coord):
