@@ -94,6 +94,20 @@ def runGame():
                 elif (event.key == K_DOWN or event.key == K_KP2) and direction != UP:
                     direction = DOWN
                 wormList[0][1] = direction
+
+                if (event.key == K_SPACE):
+                    # spawn bullet
+                    newBullet = None
+                    if direction == UP:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'], 'y': wormCoords[HEAD]['y'] - 1})
+                    elif direction == DOWN:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'], 'y': wormCoords[HEAD]['y'] + 1})
+                    elif direction == LEFT:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'] - 1, 'y': wormCoords[HEAD]['y']})
+                    elif direction == RIGHT:
+                        newBullet = Bullet(direction, {'x': wormCoords[HEAD]['x'] + 1, 'y': wormCoords[HEAD]['y']})
+                    bullets.append(newBullet)
+
                 # check second worm key input
                 wormCoords = wormList[1][0]
                 direction = wormList[1][1]
@@ -109,7 +123,7 @@ def runGame():
                     terminate()
                 wormList[1][1] = direction
 
-                if (event.key == K_SPACE):
+                if (event.key == K_LSHIFT):
                     # spawn bullet
                     newBullet = None
                     if direction == UP:
